@@ -251,6 +251,10 @@ gimp_vectors_init (GimpVectors *vectors)
   vectors->freeze_count   = 0;
   vectors->precision      = 0.2;
 
+  vectors->rtree          = g_object_new (GIMP_TYPE_RTREE,
+                                          "bounds-func",gimp_stroke_bounds,
+                                          NULL);
+
   vectors->bezier_desc    = NULL;
   vectors->bounds_valid   = FALSE;
 }
@@ -738,6 +742,18 @@ gimp_vectors_add_strokes (const GimpVectors *src_vectors,
 
 
 void
+gimp_vectors_stroke_changed (GimpVectors *vectors,
+                             GimpStroke  *stroke)
+{
+  if (GIMP_CONTAINER_GET_CLASS (vectors->rtree)->have (GIMP_CONTAINER (vectors->rtree), GIMP_OBJECT (stroke)))
+    {
+      GIMP_CONTAINER_GET_CLASS (vectors->rtree)->remove (GIMP_CONTAINER (vectors->rtree), GIMP_OBJECT (stroke));
+      GIMP_CONTAINER_GET_CLASS (vectors->rtree)->add (GIMP_CONTAINER (vectors->rtree), GIMP_OBJECT (stroke));
+    }
+}
+
+
+void
 gimp_vectors_stroke_add (GimpVectors *vectors,
                          GimpStroke  *stroke)
 {
@@ -756,11 +772,12 @@ gimp_vectors_real_stroke_add (GimpVectors *vectors,
                               GimpStroke  *stroke)
 {
   /*  Don't g_list_prepend() here.  See ChangeLog 2003-05-21 --Mitch  */
-
   vectors->strokes = g_list_append (vectors->strokes, stroke);
   vectors->last_stroke_ID ++;
   gimp_stroke_set_ID (stroke, vectors->last_stroke_ID);
   g_object_ref (stroke);
+
+  GIMP_CONTAINER_GET_CLASS (vectors->rtree)->add (GIMP_CONTAINER (vectors->rtree), GIMP_OBJECT (stroke));
 }
 
 void
@@ -1170,4 +1187,24 @@ gimp_vectors_real_make_bezier (const GimpVectors *vectors)
   g_array_free (cmd_array, FALSE);
 
   return ret_bezdesc;
+}
+
+
+gdouble
+gimp_vectors_nearest_stroke_point_get (const GimpVectors     *vectors,
+                                       const GimpCoords      *coord,
+                                       const gdouble          precision,
+                                       GimpStroke           **ret_stroke,
+                                       GimpCoords            *ret_point,
+                                       GimpAnchor           **ret_segment_start,
+                                       GimpAnchor           **ret_segment_end,
+                                       gdouble               *ret_pos)
+{
+  return GIMP_RTREE_GET_CLASS (vectors->rtree)->nearest_stroke_point_get (vectors->rtree,
+                                                                          coord, precision,
+                                                                          ret_stroke,
+                                                                          ret_point,
+                                                                          ret_segment_start,
+                                                                          ret_segment_end,
+                                                                          ret_pos);
 }

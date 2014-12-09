@@ -1215,28 +1215,46 @@ gimp_draw_tool_on_vectors_curve (GimpDrawTool      *draw_tool,
   if (ret_stroke)        *ret_stroke        = NULL;
 
   min_dist = -1.0;
+struct timeval begin;
+gettimeofday(&begin,NULL);
+  min_dist = gimp_vectors_nearest_stroke_point_get (vectors,
+                                                    coord, 1.0,
+                                                    &stroke,
+                                                    &cur_coords,
+                                                    &segment_start,
+                                                    &segment_end,
+                                                    &cur_pos);
+  if (ret_coords)        *ret_coords        = cur_coords;
+  if (ret_pos)           *ret_pos           = cur_pos;
+  if (ret_segment_start) *ret_segment_start = segment_start;
+  if (ret_segment_end)   *ret_segment_end   = segment_end;
+  if (ret_stroke)        *ret_stroke        = stroke;
+fprintf(stderr,"min_dist = %f, cur_coords = <%f, %f>, cur_pos = %f, segment_start = %p, segment_end = %p\n",min_dist,cur_coords.x,cur_coords.y,cur_pos,segment_start,segment_end);
+int count = 0;
+  if (min_dist < 0)
+    while ((stroke = gimp_vectors_stroke_get_next (vectors, stroke)))
+      {count++;
+        cur_dist = gimp_stroke_nearest_point_get (stroke, coord, 1.0,
+                                                  &cur_coords,
+                                                  &segment_start,
+                                                  &segment_end,
+                                                  &cur_pos);
 
-  while ((stroke = gimp_vectors_stroke_get_next (vectors, stroke)))
-    {
-      cur_dist = gimp_stroke_nearest_point_get (stroke, coord, 1.0,
-                                                &cur_coords,
-                                                &segment_start,
-                                                &segment_end,
-                                                &cur_pos);
+        if (cur_dist >= 0 && (min_dist < 0 || cur_dist < min_dist))
+          {
+            min_dist   = cur_dist;
+            min_coords = cur_coords;
 
-      if (cur_dist >= 0 && (min_dist < 0 || cur_dist < min_dist))
-        {
-          min_dist   = cur_dist;
-          min_coords = cur_coords;
-
-          if (ret_coords)        *ret_coords        = cur_coords;
-          if (ret_pos)           *ret_pos           = cur_pos;
-          if (ret_segment_start) *ret_segment_start = segment_start;
-          if (ret_segment_end)   *ret_segment_end   = segment_end;
-          if (ret_stroke)        *ret_stroke        = stroke;
-        }
-    }
-
+            if (ret_coords)        *ret_coords        = cur_coords;
+            if (ret_pos)           *ret_pos           = cur_pos;
+            if (ret_segment_start) *ret_segment_start = segment_start;
+            if (ret_segment_end)   *ret_segment_end   = segment_end;
+            if (ret_stroke)        *ret_stroke        = stroke;
+          }
+      }
+struct timeval end;
+gettimeofday(&end,NULL);
+fprintf(stderr,"%.3fms : %i : lalala\n",(end.tv_sec*1000. + end.tv_usec/1000.) - (begin.tv_sec*1000. + begin.tv_usec/1000.),count);
   if (min_dist >= 0 &&
       gimp_draw_tool_on_handle (draw_tool, display,
                                 coord->x,

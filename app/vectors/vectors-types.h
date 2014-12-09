@@ -27,6 +27,12 @@
 #include "vectors/vectors-enums.h"
 
 
+typedef void                      (*GimpBoundsFunc) (const GimpObject *obj,
+                                                     gdouble          *ret_x1,
+                                                     gdouble          *ret_x2,
+                                                     gdouble          *ret_y1,
+                                                     gdouble          *ret_y2);
+
 typedef struct _GimpAnchor          GimpAnchor;
 
 typedef struct _GimpVectors         GimpVectors;

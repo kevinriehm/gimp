@@ -374,6 +374,8 @@ gimp_vector_tool_button_press (GimpTool            *tool,
                                                 vector_tool->sel_anchor,
                                                 EXTEND_EDITABLE);
 
+      gimp_vectors_stroke_changed (vector_tool->vectors, vector_tool->sel_stroke);
+
       vector_tool->restriction = GIMP_ANCHOR_FEATURE_SYMMETRIC;
 
       if (! options->polygonal)
@@ -413,6 +415,8 @@ gimp_vector_tool_button_press (GimpTool            *tool,
         {
           vector_tool->function = VECTORS_FINISHED;
         }
+
+      gimp_vectors_stroke_changed (vector_tool->vectors, vector_tool->cur_stroke);
     }
 
 
@@ -444,6 +448,8 @@ gimp_vector_tool_button_press (GimpTool            *tool,
           if (! vector_tool->cur_anchor)
             vector_tool->function = VECTORS_FINISHED;
         }
+
+      gimp_vectors_stroke_changed (vector_tool->vectors, vector_tool->cur_stroke);
     }
 
 
@@ -462,6 +468,8 @@ gimp_vector_tool_button_press (GimpTool            *tool,
                                       TRUE, TRUE);
           vector_tool->undo_motion = TRUE;
         }
+
+      gimp_vectors_stroke_changed (vector_tool->vectors, vector_tool->cur_stroke);
     }
 
 
@@ -485,6 +493,8 @@ gimp_vector_tool_button_press (GimpTool            *tool,
           if (vector_tool->cur_anchor->selected == FALSE)
             vector_tool->function = VECTORS_FINISHED;
         }
+
+      gimp_vectors_stroke_changed (vector_tool->vectors, vector_tool->cur_stroke);
     }
 
 
@@ -514,6 +524,7 @@ gimp_vector_tool_button_press (GimpTool            *tool,
           vector_tool->undo_motion = TRUE;
         }
 
+      gimp_vectors_stroke_changed (vector_tool->vectors, vector_tool->cur_stroke);
     }
 
 
@@ -545,6 +556,8 @@ gimp_vector_tool_button_press (GimpTool            *tool,
                                   vector_tool->sel_anchor, TRUE, TRUE);
 
       vector_tool->function = VECTORS_FINISHED;
+
+      gimp_vectors_stroke_changed (vector_tool->vectors, vector_tool->cur_stroke);
     }
 
 
@@ -609,6 +622,8 @@ gimp_vector_tool_button_press (GimpTool            *tool,
       vector_tool->cur_stroke = NULL;
       vector_tool->cur_anchor = NULL;
       vector_tool->function = VECTORS_FINISHED;
+
+      gimp_vectors_stroke_changed (vector_tool->vectors, vector_tool->cur_stroke);
     }
 
 
@@ -628,6 +643,8 @@ gimp_vector_tool_button_press (GimpTool            *tool,
           gimp_vectors_stroke_add (vector_tool->vectors, new_stroke);
           g_object_unref (new_stroke);
         }
+
+      gimp_vectors_stroke_changed (vector_tool->vectors, vector_tool->cur_stroke);
 
       vector_tool->undo_motion = TRUE;
       vector_tool->cur_stroke = NULL;

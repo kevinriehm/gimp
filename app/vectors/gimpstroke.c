@@ -900,6 +900,42 @@ gimp_stroke_real_is_empty (const GimpStroke *stroke)
 }
 
 
+void
+gimp_stroke_bounds (const GimpObject *object,
+                    gdouble          *ret_x1,
+                    gdouble          *ret_x2,
+                    gdouble          *ret_y1,
+                    gdouble          *ret_y2)
+{
+  g_return_if_fail (object);
+  g_return_if_fail (GIMP_IS_STROKE (object));
+
+  *ret_x1 =  G_MAXDOUBLE;
+  *ret_x2 = -G_MAXDOUBLE;
+  *ret_y1 =  G_MAXDOUBLE;
+  *ret_y2 = -G_MAXDOUBLE;
+
+  GList *list;
+  for (list = GIMP_STROKE (object)->anchors; list; list = g_list_next(list))
+    {
+      GimpAnchor *anchor = GIMP_ANCHOR (list->data);
+
+      *ret_x1 = MIN (*ret_x1, anchor->position.x);
+      *ret_x2 = MAX (*ret_x2, anchor->position.x);
+      *ret_y1 = MIN (*ret_y1, anchor->position.y);
+      *ret_y2 = MAX (*ret_y2, anchor->position.y);
+    }
+
+  if (*ret_x1 == G_MAXDOUBLE)
+    {
+      *ret_x1 = 0;
+      *ret_x2 = 0;
+      *ret_y1 = 0;
+      *ret_y2 = 0;
+    }
+}
+
+
 gdouble
 gimp_stroke_get_length (const GimpStroke *stroke,
                         const gdouble     precision)

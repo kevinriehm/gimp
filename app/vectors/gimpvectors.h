@@ -22,6 +22,7 @@
 #define __GIMP_VECTORS_H__
 
 #include "core/gimpitem.h"
+#include "core/gimprtree.h"
 
 #define GIMP_TYPE_VECTORS            (gimp_vectors_get_type ())
 #define GIMP_VECTORS(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), GIMP_TYPE_VECTORS, GimpVectors))
@@ -42,6 +43,8 @@ struct _GimpVectors
 
   gint            freeze_count;
   gdouble         precision;
+
+  GimpRTree      *rtree;          /* Acceleration structure       */
 
   GimpBezierDesc *bezier_desc;    /* Cached bezier representation */
 
@@ -106,6 +109,9 @@ void            gimp_vectors_copy_strokes       (const GimpVectors *src_vectors,
                                                  GimpVectors       *dest_vectors);
 void            gimp_vectors_add_strokes        (const GimpVectors *src_vectors,
                                                  GimpVectors       *dest_vectors);
+
+void            gimp_vectors_stroke_changed     (GimpVectors       *vectors,
+                                                 GimpStroke        *stroke);
 
 
 /* accessing / modifying the anchors */
@@ -184,6 +190,17 @@ gint            gimp_vectors_interpolate        (const GimpVectors  *vectors,
 
 /* returns a bezier representation */
 const GimpBezierDesc * gimp_vectors_get_bezier  (GimpVectors        *vectors);
+
+
+gdouble
+gimp_vectors_nearest_stroke_point_get (const GimpVectors *vectors,
+                                       const GimpCoords *coord,
+                                       const gdouble          precision,
+                                       GimpStroke **ret_stroke,
+                                       GimpCoords            *ret_point,
+                                       GimpAnchor           **ret_segment_start,
+                                       GimpAnchor           **ret_segment_end,
+                                       gdouble               *ret_pos);
 
 
 #endif /* __GIMP_VECTORS_H__ */

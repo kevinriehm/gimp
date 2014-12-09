@@ -290,6 +290,12 @@ gboolean     gimp_stroke_is_empty             (const GimpStroke      *stroke);
 
 /* accessing the shape of the curve */
 
+void         gimp_stroke_bounds               (const GimpObject      *object,
+                                               gdouble               *ret_x1,
+                                               gdouble               *ret_x2,
+                                               gdouble               *ret_y1,
+                                               gdouble               *ret_y2);
+
 gdouble      gimp_stroke_get_length           (const GimpStroke      *stroke,
                                                const gdouble          precision);
 gdouble      gimp_stroke_get_distance         (const GimpStroke      *stroke,
