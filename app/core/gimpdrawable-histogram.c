@@ -28,17 +28,24 @@
 
 #include "gimpchannel.h"
 #include "gimpdrawable-histogram.h"
+#include "gimpdrawableundo.h"
 #include "gimphistogram.h"
 #include "gimpimage.h"
+#include "gimpimage-undo.h"
+#include "gimpundostack.h"
 
 
 void
 gimp_drawable_calculate_histogram (GimpDrawable  *drawable,
                                    GimpHistogram *histogram)
 {
-  GimpImage   *image;
-  GimpChannel *mask;
-  gint         x, y, width, height;
+  GimpImage        *image;
+  GimpChannel      *mask;
+  GimpUndo         *undo;
+  GeglBuffer       *old_buffer;
+  GimpUndoStack    *redo_stack, *undo_stack, *undo_group;
+  gint              x, y, width, height;
+  gint              old_x, old_y, old_width, old_height;
 
   g_return_if_fail (GIMP_IS_DRAWABLE (drawable));
   g_return_if_fail (gimp_item_is_attached (GIMP_ITEM (drawable)));
@@ -49,6 +56,57 @@ gimp_drawable_calculate_histogram (GimpDrawable  *drawable,
 
   image = gimp_item_get_image (GIMP_ITEM (drawable));
   mask  = gimp_image_get_mask (image);
+
+  /* Check the undo stack. */
+  old_buffer = NULL;
+  redo_stack = gimp_image_get_redo_stack (image);
+  if (!gimp_undo_stack_peek(redo_stack))
+    {
+      undo_stack = gimp_image_get_undo_stack (image);
+      undo = gimp_undo_stack_peek (undo_stack);
+      if (undo && undo->undo_type == GIMP_UNDO_GROUP_PAINT)
+        {
+          undo = gimp_undo_stack_peek (GIMP_UNDO_STACK (undo));
+          if (undo && undo->undo_type == GIMP_UNDO_DRAWABLE)
+            {
+              g_object_get (GIMP_DRAWABLE_UNDO (undo),
+                            "buffer", &old_buffer,
+                            "x", &old_x,
+                            "y", &old_y,
+                            NULL);
+              old_width = gegl_buffer_get_width (old_buffer);
+              old_height = gegl_buffer_get_height (old_buffer);
+
+              if (x < old_x)
+                {
+                  width -= old_x - x;
+                  x = old_x;
+                }
+              else
+                {
+                  old_width -= x - old_x;
+                  old_x = x;
+                }
+
+              if (y < old_y)
+                {
+                  height -= old_y - y;
+                  y = old_y;
+                }
+              else
+                {
+                  old_height -= y - old_y;
+                  old_y = y;
+                }
+
+              if (old_width < width)
+                  width = old_width;
+
+              if (old_height < height)
+                  height = old_height;
+            }
+        }
+    }
 
   if (FALSE)
     {
@@ -99,6 +157,9 @@ gimp_drawable_calculate_histogram (GimpDrawable  *drawable,
     }
   else
     {
+int count = 0;
+struct timeval begin;
+gettimeofday(&begin,NULL);
       if (! gimp_channel_is_empty (mask))
         {
           gint off_x, off_y;
@@ -106,6 +167,7 @@ gimp_drawable_calculate_histogram (GimpDrawable  *drawable,
           gimp_item_get_offset (GIMP_ITEM (drawable), &off_x, &off_y);
 
           gimp_histogram_calculate (histogram,
+                                    old_buffer,
                                     gimp_drawable_get_buffer (drawable),
                                     GEGL_RECTANGLE (x, y, width, height),
                                     gimp_drawable_get_buffer (GIMP_DRAWABLE (mask)),
@@ -115,9 +177,16 @@ gimp_drawable_calculate_histogram (GimpDrawable  *drawable,
       else
         {
           gimp_histogram_calculate (histogram,
+                                    old_buffer,
                                     gimp_drawable_get_buffer (drawable),
                                     GEGL_RECTANGLE (x, y, width, height),
                                     NULL, NULL);
         }
+struct timeval end;
+gettimeofday(&end,NULL);
+fprintf(stderr,"%.3fms : %i : lalala\n",(end.tv_sec*1000. + end.tv_usec/1000.) - (begin.tv_sec*1000. + begin.tv_usec/1000.),count);
     }
+
+    if (old_buffer)
+      g_object_unref (old_buffer);
 }

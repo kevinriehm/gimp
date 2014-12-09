@@ -225,6 +225,7 @@ gimp_histogram_duplicate (GimpHistogram *histogram)
 
 void
 gimp_histogram_calculate (GimpHistogram       *histogram,
+                          GeglBuffer          *old_buffer,
                           GeglBuffer          *buffer,
                           const GeglRectangle *buffer_rect,
                           GeglBuffer          *mask,
@@ -314,7 +315,161 @@ gimp_histogram_calculate (GimpHistogram       *histogram,
 
   g_object_freeze_notify (G_OBJECT (histogram));
 
-  gimp_histogram_alloc_values (histogram, n_components, n_bins);
+#define VALUE(c,i) (priv->values[(c) * priv->n_bins + \
+                                 (gint) (CLAMP ((i), 0.0, 1.0) * \
+                                   (priv->n_bins - 0.0001))])
+
+  if (old_buffer == NULL)
+    gimp_histogram_alloc_values (histogram, n_components, n_bins);
+  else
+    {
+      iter = gegl_buffer_iterator_new (old_buffer,
+               GEGL_RECTANGLE (0, 0, gegl_buffer_get_width(old_buffer),
+                 gegl_buffer_get_height(old_buffer)),
+               0, format, GEGL_ACCESS_READ, GEGL_ABYSS_NONE);
+
+      while (gegl_buffer_iterator_next (iter))
+        {
+          const gfloat *data   = iter->data[0];
+          gint          length = iter->length;
+          gfloat        max;
+
+          if (mask)
+      {
+        const gfloat *mask_data = iter->data[1];
+
+        switch (n_components)
+          {
+          case 1:
+            while (length--)
+        {
+          const gdouble masked = *mask_data;
+
+          VALUE (0, data[0]) -= masked;
+
+          data += n_components;
+          mask_data += 1;
+        }
+            break;
+
+          case 2:
+            while (length--)
+        {
+          const gdouble masked = *mask_data;
+          const gdouble weight = data[1];
+
+          VALUE (0, data[0]) -= weight * masked;
+          VALUE (1, data[1]) -= masked;
+
+          data += n_components;
+          mask_data += 1;
+        }
+            break;
+
+          case 3: /* calculate separate value values */
+            while (length--)
+        {
+          const gdouble masked = *mask_data;
+
+          VALUE (1, data[0]) -= masked;
+          VALUE (2, data[1]) -= masked;
+          VALUE (3, data[2]) -= masked;
+
+          max = MAX (data[0], data[1]);
+          max = MAX (data[2], max);
+
+          VALUE (0, max) -= masked;
+
+          data += n_components;
+          mask_data += 1;
+        }
+            break;
+
+          case 4: /* calculate separate value values */
+            while (length--)
+        {
+          const gdouble masked = *mask_data;
+          const gdouble weight = data[3];
+
+          VALUE (1, data[0]) -= weight * masked;
+          VALUE (2, data[1]) -= weight * masked;
+          VALUE (3, data[2]) -= weight * masked;
+          VALUE (4, data[3]) -= masked;
+
+          max = MAX (data[0], data[1]);
+          max = MAX (data[2], max);
+
+          VALUE (0, max) -= weight * masked;
+
+          data += n_components;
+          mask_data += 1;
+        }
+            break;
+          }
+      }
+          else /* no mask */
+      {
+        switch (n_components)
+          {
+          case 1:
+            while (length--)
+        {
+          VALUE (0, data[0]) -= 1.0;
+
+          data += n_components;
+        }
+            break;
+
+          case 2:
+            while (length--)
+        {
+          const gdouble weight = data[1];
+
+          VALUE (0, data[0]) -= weight;
+          VALUE (1, data[1]) -= 1.0;
+
+          data += n_components;
+        }
+            break;
+
+          case 3: /* calculate separate value values */
+            while (length--)
+        {
+          VALUE (1, data[0]) -= 1.0;
+          VALUE (2, data[1]) -= 1.0;
+          VALUE (3, data[2]) -= 1.0;
+
+          max = MAX (data[0], data[1]);
+          max = MAX (data[2], max);
+
+          VALUE (0, max) -= 1.0;
+
+          data += n_components;
+        }
+            break;
+
+          case 4: /* calculate separate value values */
+            while (length--)
+        {
+          const gdouble weight = data[3];
+
+          VALUE (1, data[0]) -= weight;
+          VALUE (2, data[1]) -= weight;
+          VALUE (3, data[2]) -= weight;
+          VALUE (4, data[3]) -= 1.0;
+
+          max = MAX (data[0], data[1]);
+          max = MAX (data[2], max);
+
+          VALUE (0, max) -= weight;
+
+          data += n_components;
+        }
+            break;
+          }
+      }
+        }
+        }
 
   iter = gegl_buffer_iterator_new (buffer, buffer_rect, 0, format,
                                    GEGL_ACCESS_READ, GEGL_ABYSS_NONE);
@@ -323,10 +478,6 @@ gimp_histogram_calculate (GimpHistogram       *histogram,
     gegl_buffer_iterator_add (iter, mask, mask_rect, 0,
                               babl_format ("Y float"),
                               GEGL_ACCESS_READ, GEGL_ABYSS_NONE);
-
-#define VALUE(c,i) (priv->values[(c) * priv->n_bins + \
-                                 (gint) (CLAMP ((i), 0.0, 1.0) * \
-                                         (priv->n_bins - 0.0001))])
 
   while (gegl_buffer_iterator_next (iter))
     {

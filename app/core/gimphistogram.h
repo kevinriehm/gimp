@@ -55,6 +55,7 @@ GimpHistogram * gimp_histogram_new           (gboolean              gamma_correc
 GimpHistogram * gimp_histogram_duplicate     (GimpHistogram        *histogram);
 
 void            gimp_histogram_calculate     (GimpHistogram        *histogram,
+                                              GeglBuffer           *old_buffer,
                                               GeglBuffer           *buffer,
                                               const GeglRectangle  *buffer_rect,
                                               GeglBuffer           *mask,
